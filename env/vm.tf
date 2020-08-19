@@ -1,15 +1,15 @@
 resource "azurerm_network_interface" "main" {
-  name                = "${azurerm_resource_group.main.name}-nic"
-  location            = "${azurerm_resource_group.main.location}"
-  resource_group_name = "${azurerm_resource_group.main.name}"
+  name                = "${azurerm_resource_group.main.name}-ni"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
 
-  network_security_group_id = "${azurerm_network_security_group.main.id}"
+  network_security_group_id = azurerm_network_security_group.main.id
 
   ip_configuration {
     name                          = "ipconfig"
-    subnet_id                     = "${azurerm_subnet.internal.id}"
+    subnet_id                     = azurerm_subnet.internal.id
     private_ip_address_allocation = "dynamic"
-    public_ip_address_id = "${azurerm_public_ip.main.id}"
+    public_ip_address_id = azurerm_public_ip.main.id
   }
 }
 
@@ -19,9 +19,9 @@ locals {
 
 resource "azurerm_virtual_machine" "main" {
   name                  = "${azurerm_resource_group.main.name}-vm"
-  location              = "${azurerm_resource_group.main.location}"
-  resource_group_name   = "${azurerm_resource_group.main.name}"
-  network_interface_ids = ["${azurerm_network_interface.main.id}"]
+  location              = azurerm_resource_group.main.location
+  resource_group_name   = azurerm_resource_group.main.name
+  network_interface_ids = [azurerm_network_interface.main.id]
   vm_size               = "Standard_B2s"
 
   storage_image_reference {
@@ -40,8 +40,8 @@ resource "azurerm_virtual_machine" "main" {
 
   os_profile {
     computer_name  = "hostname"
-    admin_username = "${local.username}"
-    admin_password = "${var.password}"
+    admin_username = local.username
+    admin_password = var.password
   }
 
   os_profile_linux_config {
@@ -51,31 +51,33 @@ resource "azurerm_virtual_machine" "main" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get update",
-      "sudo apt-get install unzip",
-      "sudo apt-get install libcurl4",
+      "sudo apt-get install -y unzip",
+      "sudo apt-get install -y libcurl4",
     ]
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
   provisioner "remote-exec" {
     inline = [
-      "mkdir ~/minecraft",
-      "cd ~/minecraft",
-      "wget https://minecraft.azureedge.net/bin-linux/bedrock-server-1.8.1.2.zip",
-      "unzip bedrock-server-1.8.1.2.zip",     
-      "sudo mv ~/minecraft/libCrypto.so /usr/lib/libCrypto.so",
+      "mkdir /home/${local.username}/minecraft",
+      "cd /home/${local.username}/minecraft",
+      "wget https://minecraft.azureedge.net/bin-linux/bedrock-server-1.16.20.03.zip",
+      "unzip bedrock-server-1.16.20.03.zip",     
+      "sudo mv /home/${local.username}/minecraft/libCrypto.so /usr/lib/libCrypto.so",
       "sudo ldconfig -v | grep libCrypto.so",
     ]
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
@@ -87,68 +89,74 @@ resource "azurerm_virtual_machine" "main" {
     ]
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
   provisioner "file" {
-    source = "../config/minecraft-server.service",
-    destination = "~/minecraft-server.service"
+    source = "${path.module}/config/minecraft-server.service"
+    destination = "/home/${local.username}/minecraft-server.service"
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
   provisioner "file" {
-    source = "../config/whitelist.json",
-    destination = "~/minecraft/whitelist.json"
+    source = "${path.module}/config/whitelist.json"
+    destination = "/home/${local.username}/minecraft/whitelist.json"
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
   provisioner "file" {
-    source = "../config/ops.json",
-    destination = "~/minecraft/ops.json"
+    source = "${path.module}/config/ops.json"
+    destination = "/home/${local.username}/minecraft/ops.json"
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
   provisioner "file" {
-    source = "../config/server.properties",
-    destination = "~/minecraft/server.properties"
+    source = "${path.module}/config/server.properties"
+    destination = "/home/${local.username}/minecraft/server.properties"
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo mv ~/minecraft-server.service /etc/systemd/system/minecraft-server.service",
+      "sudo mv /home/${local.username}/minecraft-server.service /etc/systemd/system/minecraft-server.service",
       "sudo systemctl daemon-reload",
       "sudo systemctl enable minecraft-server",
       "sudo systemctl start minecraft-server",
     ]
 
     connection {
+        host     = azurerm_public_ip.main.ip_address
         type     = "ssh"
-        user     = "${local.username}"
-        password = "${var.password}"
+        user     = local.username
+        password = var.password
     }
   }
 }

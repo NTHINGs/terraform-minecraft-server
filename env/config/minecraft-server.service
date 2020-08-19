@@ -10,4 +10,4 @@ WorkingDirectory=/home/minecraftadmin/minecraft
 ExecStart=/home/minecraftadmin/minecraft/bedrock_server
 
 [Install]
-WantedBy=multi-user.targetg
+WantedBy=multi-user.target
